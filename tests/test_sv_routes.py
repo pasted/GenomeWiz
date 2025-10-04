@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
-from app.main import app
-from app.db.base import SessionLocal
-from app.db import models
+from genomewiz.main import app
+from genomewiz.db.base import SessionLocal
+from genomewiz.db import models
 
 def setup_module():
     db = SessionLocal()

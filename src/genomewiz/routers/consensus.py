@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.db.base import get_db
-from app.db import models
+from genomewiz.db.base import get_db
+from genomewiz.db import models
 
 router = APIRouter(prefix="/sv", tags=["consensus"])
 

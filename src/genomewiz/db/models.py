@@ -1,7 +1,7 @@
-from sqlalchemy import String, Integer, Text, JSON, ForeignKey, DateTime
+from sqlalchemy import String, Integer, Text, JSON, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
-from app.db.base import Base
+from genomewiz.db.base import Base
 
 class Sample(Base):
     __tablename__ = "samples"
@@ -30,11 +30,23 @@ class SVCandidate(Base):
 
 class Curator(Base):
     __tablename__ = "curators"
-    id: Mapped[str] = mapped_column(String, primary_key=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # internal UUID or Google sub
     name: Mapped[str] = mapped_column(String)
-    role: Mapped[str] = mapped_column(String)  # admin/curator
+    email: Mapped[str] = mapped_column(String, unique=True, index=True)
+    google_sub: Mapped[str | None] = mapped_column(String, unique=True, index=True)
     orcid: Mapped[str | None] = mapped_column(String, nullable=True)
     score: Mapped[int] = mapped_column(Integer, default=0)
+
+    roles: Mapped[list["UserRole"]] = relationship("UserRole", back_populates="user", cascade="all, delete")
+
+class UserRole(Base):
+    __tablename__ = "user_roles"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("curators.id"), index=True)
+    role: Mapped[str] = mapped_column(String)  # "admin" | "curator" | "viewer"
+    user: Mapped["Curator"] = relationship("Curator", back_populates="roles")
+    __table_args__ = (UniqueConstraint("user_id", "role", name="uq_user_role"),)
+
 
 class Label(Base):
     __tablename__ = "labels"

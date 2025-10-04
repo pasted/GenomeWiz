@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from app.db.base import get_db
-from app.db import models
-from app.schemas.sv import SV
-from app.core.security import get_current_user
+from genomewiz.db.base import get_db
+from genomewiz.db import models
+from genomewiz.schemas.sv import SV
+from genomewiz.core.security import get_current_user
 
 router = APIRouter(prefix="/sv", tags=["sv"])
 

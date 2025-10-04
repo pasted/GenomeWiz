@@ -1,7 +1,7 @@
 import subprocess
 import os
 from pathlib import Path
-from app.core.config import get_settings
+from genomewiz.core.config import get_settings
 
 def render_sv_panel(sv_id: str, chrom: str, pos1: int, pos2: int | None,
                     sample_id: str, out_basename: str | None = None) -> dict:

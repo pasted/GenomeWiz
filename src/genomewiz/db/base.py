@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy import create_engine
-from app.core.config import get_settings
+from genomewiz.core.config import get_settings
 
 class Base(DeclarativeBase): pass
 

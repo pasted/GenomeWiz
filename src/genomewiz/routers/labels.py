@@ -2,14 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import uuid4
 from datetime import datetime
-from app.db.base import get_db
-from app.db import models
-from app.schemas.label import LabelIn, LabelOut
-from app.core.security import get_current_user
+from genomewiz.db.base import get_db
+from genomewiz.db import models
+from genomewiz.schemas.label import LabelIn, LabelOut
+from genomewiz.core.security import get_current_user
+from genomewiz.core.auth import get_current_user, require_curator_or_admin
 
 router = APIRouter(prefix="/sv", tags=["labels"])
 
-@router.post("/{sv_id}/label", response_model=LabelOut)
+@router.post("/{sv_id}/label", response_model=LabelOut, dependencies=[require_curator_or_admin])
 def create_label(sv_id: str, payload: LabelIn, db: Session = Depends(get_db),
                  user=Depends(get_current_user)):
     sv = db.get(models.SVCandidate, sv_id)

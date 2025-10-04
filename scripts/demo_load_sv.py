@@ -1,6 +1,6 @@
 from uuid import uuid4
-from app.db.base import SessionLocal
-from app.db import models
+from genomewiz.db.base import SessionLocal
+from genomewiz.db import models
 
 def seed():
     db = SessionLocal()

@@ -10,6 +10,13 @@ class Settings(BaseModel):
     renderer_script: str = os.getenv("RENDERER_SCRIPT", "./evidence/gwplot_render.R")
     evidence_out: str = os.getenv("EVIDENCE_OUT", "./evidence/out")
 
+    # Google OAuth
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    oauth_callback_url: str = os.getenv("OAUTH_CALLBACK_URL", "http://localhost:8000/auth/callback")
+    session_secret: str = os.getenv("SESSION_SECRET", "change-me-session")
+    allowed_gsuite_domain: str | None = os.getenv("ALLOWED_GSUITE_DOMAIN") or None
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
