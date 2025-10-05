@@ -12,3 +12,6 @@ fmt:
 lint:
 	ruff check .
 	mypy app
+
+test-db:
+	genomewiz-init-db && genomewiz-seed-demo && pytest -q

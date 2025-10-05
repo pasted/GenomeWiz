@@ -38,3 +38,10 @@ package-dir = {"" = "src"}
 where = ["src"]
 include = ["genomewiz*"]
 exclude = ["tests*", "scripts*", "evidence*", "client*"]
+
+[project.scripts]
+genomewiz-init-db = "genomewiz.cli:init_db"
+genomewiz-seed-demo = "genomewiz.cli:seed_demo"
+genomewiz-create-admin = "genomewiz.cli:create_admin_main"
+genomewiz-grant-role = "genomewiz.cli:grant_role_main"
+
