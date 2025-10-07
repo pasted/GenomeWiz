@@ -2,6 +2,14 @@ from pydantic import BaseModel
 from functools import lru_cache
 import os
 
+# load .env before reading env vars
+try:
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv(), override=False)
+except Exception:
+    # dotenv is optional at runtime; ignore if missing
+    pass
+
 class Settings(BaseModel):
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./genomewiz.db")
     app_env: str = os.getenv("APP_ENV", "dev")

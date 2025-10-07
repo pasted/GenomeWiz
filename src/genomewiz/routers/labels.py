@@ -10,7 +10,7 @@ from genomewiz.core.auth import get_current_user, require_curator_or_admin
 
 router = APIRouter(prefix="/sv", tags=["labels"])
 
-@router.post("/{sv_id}/label", response_model=LabelOut, dependencies=[require_curator_or_admin])
+@router.post("/{sv_id}/label", response_model=LabelOut)
 def create_label(sv_id: str, payload: LabelIn, db: Session = Depends(get_db),
                  user=Depends(get_current_user)):
     sv = db.get(models.SVCandidate, sv_id)
