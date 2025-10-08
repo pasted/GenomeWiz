@@ -1,14 +1,14 @@
 from fastapi import FastAPI, Depends
 from starlette.middleware.sessions import SessionMiddleware
 
-from genomewiz.db.base import Base, engine
-from genomewiz.core.config import get_settings
-from genomewiz.core.auth import require_curator_or_admin, require_admin
-from genomewiz.routers.sv import router as sv_router
-from genomewiz.routers.labels import router as labels_router
-from genomewiz.routers.consensus import router as consensus_router
-from genomewiz.routers.auth import router as auth_router
-from genomewiz.routers.evidence import router as evidence_router
+from .db.base import Base, engine
+from .core.config import get_settings
+from .core.auth import require_curator_or_admin, require_admin
+from .routers import sv as sv_router
+from .routers import labels as labels_router
+from .routers import consensus  as consensus_router
+from .routers import auth as auth_router
+from .routers import evidence as evidence_router
 
 from fastapi.responses import HTMLResponse
 

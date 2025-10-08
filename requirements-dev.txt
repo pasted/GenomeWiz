@@ -1,0 +1,12 @@
+# Everything in base
+-r requirements.txt
+
+# Linters & type-checkers
+black~=24.8
+ruff~=0.6
+mypy~=1.11
+types-requests
+types-orjson
+
+# Security / misc
+pip-audit~=2.7

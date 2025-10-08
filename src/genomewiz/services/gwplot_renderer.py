@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 from typing import Optional, Dict
 import anyio
+import logging
+
+log = logging.getLogger(__name__)
 
 try:
     from gwplot import Gw
@@ -31,17 +34,30 @@ def _build_gw(reference: str) -> Gw:
         threads=4,
     )
 
-def _render_png_sync(sample_id: str, chrom: str, start: int, end: int,
-                     sv_id: Optional[str] = None) -> bytes:
+def _render_png_sync(sample_id: str, chrom: str, start: int, end: int, sv_id: Optional[str] = None) -> bytes:
     ref = os.getenv("GW_REFERENCE", "hg38")
     paths = _sample_paths(sample_id)
+    log.info("GWPlot render start: ref=%s bam=%s vcf=%s bed=%s region=%s:%s-%s",
+             ref, paths.get("bam"), paths.get("vcf"), paths.get("bed"), chrom, start, end)
+
+    if not os.path.exists(ref):
+        raise FileNotFoundError(f"GW_REFERENCE not found: {ref}")
+    if not os.path.exists(paths["bam"]):
+        raise FileNotFoundError(f"BAM not found: {paths['bam']}")
+    bai = paths["bam"] + ".bai"
+    csi = paths["bam"] + ".csi"
+    if not (os.path.exists(bai) or os.path.exists(csi)):
+        raise FileNotFoundError(f"BAM index not found (.bai/.csi): {bai} / {csi}")
+
     gw = _build_gw(ref)
     gw.add_bam(paths["bam"])
     if "vcf" in paths: gw.add_track(paths["vcf"])
     if "bed" in paths: gw.add_track(paths["bed"])
+
     gw.view_region(chrom, start, end)
     gw.draw(clear_buffer=True)
     return gw.encode_as_png()
+
 
 async def render_png(sample_id: str, chrom: str, start: int, end: int,
                      sv_id: Optional[str] = None) -> bytes:
