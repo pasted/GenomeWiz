@@ -12,7 +12,18 @@ from .routers import evidence as evidence_router
 
 from fastapi.responses import HTMLResponse
 
+from starlette.middleware.sessions import SessionMiddleware
+from .core.config import get_settings
+
+
 app = FastAPI(title="GenomeWiz", version="0.1.0")
+
+settings = get_settings()
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=(settings.session_secret or "dev-session-secret"),
+    same_site="lax",
+)
 
 # DB
 Base.metadata.create_all(bind=engine)

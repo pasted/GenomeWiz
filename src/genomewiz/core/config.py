@@ -1,30 +1,79 @@
-from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+from pathlib import Path
 from functools import lru_cache
-import os
 
-# load .env before reading env vars
-try:
-    from dotenv import load_dotenv, find_dotenv
-    load_dotenv(find_dotenv(), override=False)
-except Exception:
-    # dotenv is optional at runtime; ignore if missing
-    pass
+def read_secret_file(path: str | None) -> str | None:
+    if not path:
+        return None
+    p = Path(path)
+    return p.read_text(encoding="utf-8").strip() if p.exists() else None
 
-class Settings(BaseModel):
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./genomewiz.db")
-    app_env: str = os.getenv("APP_ENV", "dev")
-    jwt_secret: str = os.getenv("JWT_SECRET", "change-me")
-    renderer_rscript: str = os.getenv("RENDERER_RSCRIPT", "Rscript")
-    renderer_script: str = os.getenv("RENDERER_SCRIPT", "./evidence/gwplot_render.R")
-    evidence_out: str = os.getenv("EVIDENCE_OUT", "./evidence/out")
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    # Google OAuth
-    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
-    google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
-    oauth_callback_url: str = os.getenv("OAUTH_CALLBACK_URL", "http://localhost:8000/auth/callback")
-    session_secret: str = os.getenv("SESSION_SECRET", "change-me-session")
-    allowed_gsuite_domain: str | None = os.getenv("ALLOWED_GSUITE_DOMAIN") or None
+    APP_ENV: str = "dev"        # dev|staging|prod
+    APP_DEBUG: bool = True
 
-@lru_cache(maxsize=1)
+    # Database
+    DATABASE_URL: str | None = None
+    DB_HOST: str | None = None
+    DB_PORT: int | None = None
+    DB_NAME: str | None = None
+    DB_USER: str | None = None
+    DB_PASSWORD: str | None = None
+    DB_PASSWORD_FILE: str | None = None
+    DB_SSLMODE: str = "prefer"  # prod: "require"
+
+    # Google OAuth + JWT (prefer *_FILE via Docker secrets)
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_ID_FILE: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_CLIENT_SECRET_FILE: str | None = None
+    OAUTH_CALLBACK_URL: str | None = "http://localhost:8000/auth/callback"
+
+    SESSION_SECRET: str | None = None
+    SESSION_SECRET_FILE: str | None = None
+    JWT_SECRET: str | None = None
+    JWT_SECRET_FILE: str | None = None
+    ALLOWED_GSUITE_DOMAIN: str | None = None
+
+    # Non-secret paths
+    GW_REFERENCE: str = "/tmp"
+    GW_FIGURES_DIR: str = "./figures"
+
+    def _secret(self, val: str | None, file_path: str | None) -> str | None:
+        return val or read_secret_file(file_path)
+
+    @property
+    def database_uri(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        password = self._secret(self.DB_PASSWORD, self.DB_PASSWORD_FILE)
+        if all([self.DB_HOST, self.DB_PORT, self.DB_NAME, self.DB_USER, password]):
+            return (
+                f"postgresql+psycopg://{self.DB_USER}:{password}"
+                f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+                f"?sslmode={self.DB_SSLMODE}"
+            )
+        raise RuntimeError("Database configuration is incomplete")
+
+    @property
+    def google_client_id(self) -> str | None:
+        return self._secret(self.GOOGLE_CLIENT_ID, self.GOOGLE_CLIENT_ID_FILE)
+
+    @property
+    def google_client_secret(self) -> str | None:
+        return self._secret(self.GOOGLE_CLIENT_SECRET, self.GOOGLE_CLIENT_SECRET_FILE)
+
+    @property
+    def session_secret(self) -> str | None:
+        return self._secret(self.SESSION_SECRET, self.SESSION_SECRET_FILE)
+
+    @property
+    def jwt_secret(self) -> str | None:
+        return self._secret(self.JWT_SECRET, self.JWT_SECRET_FILE)
+
+@lru_cache
 def get_settings() -> Settings:
     return Settings()
