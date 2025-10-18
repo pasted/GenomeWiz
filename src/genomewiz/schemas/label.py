@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -11,8 +11,9 @@ class LabelIn(BaseModel):
     notes: Optional[str] = None
 
 class LabelOut(LabelIn):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     sv_id: str
     curator_id: str
     created_at: datetime
-    class Config: from_attributes = True

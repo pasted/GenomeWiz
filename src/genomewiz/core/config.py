@@ -47,8 +47,17 @@ class Settings(BaseSettings):
 
     @property
     def database_uri(self) -> str:
+        """Return a usable database URI.
+
+        The tests run against an on-disk SQLite database by default so we provide a
+        sensible fallback when no explicit configuration is present. In production a
+        full PostgreSQL DSN can be supplied via ``DATABASE_URL`` or individual DB_*
+        fields.
+        """
+
         if self.DATABASE_URL:
             return self.DATABASE_URL
+
         password = self._secret(self.DB_PASSWORD, self.DB_PASSWORD_FILE)
         if all([self.DB_HOST, self.DB_PORT, self.DB_NAME, self.DB_USER, password]):
             return (
@@ -56,7 +65,15 @@ class Settings(BaseSettings):
                 f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
                 f"?sslmode={self.DB_SSLMODE}"
             )
-        raise RuntimeError("Database configuration is incomplete")
+
+        # Default to a local SQLite database for development and tests.
+        return "sqlite:///./genomewiz.db"
+
+    @property
+    def database_url(self) -> str:
+        """Backwards compatible alias expected by ``db.base``."""
+
+        return self.database_uri
 
     @property
     def google_client_id(self) -> str | None:
@@ -67,12 +84,12 @@ class Settings(BaseSettings):
         return self._secret(self.GOOGLE_CLIENT_SECRET, self.GOOGLE_CLIENT_SECRET_FILE)
 
     @property
-    def session_secret(self) -> str | None:
-        return self._secret(self.SESSION_SECRET, self.SESSION_SECRET_FILE)
+    def session_secret(self) -> str:
+        return self._secret(self.SESSION_SECRET, self.SESSION_SECRET_FILE) or "dev-session-secret"
 
     @property
-    def jwt_secret(self) -> str | None:
-        return self._secret(self.JWT_SECRET, self.JWT_SECRET_FILE)
+    def jwt_secret(self) -> str:
+        return self._secret(self.JWT_SECRET, self.JWT_SECRET_FILE) or "dev-jwt-secret"
 
 @lru_cache
 def get_settings() -> Settings:

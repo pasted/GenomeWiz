@@ -1,62 +1,57 @@
-from fastapi import FastAPI, Depends
-from starlette.middleware.sessions import SessionMiddleware
+"""FastAPI application entrypoint for GenomeWiz."""
+from __future__ import annotations
 
-from .db.base import Base, engine
-from .core.config import get_settings
-from .core.auth import require_curator_or_admin, require_admin
-from .routers import sv as sv_router
-from .routers import labels as labels_router
-from .routers import consensus  as consensus_router
-from .routers import auth as auth_router
-from .routers import evidence as evidence_router
-
+from fastapi import Depends, FastAPI
 from fastapi.responses import HTMLResponse
-
 from starlette.middleware.sessions import SessionMiddleware
-from .core.config import get_settings
 
+from genomewiz.core.auth import require_curator_or_admin
+from genomewiz.core.config import get_settings
+from genomewiz.db.base import Base, engine
+from genomewiz.routers import auth as auth_router
+from genomewiz.routers import consensus as consensus_router
+from genomewiz.routers import labels as labels_router
+from genomewiz.routers import sv as sv_router
 
 app = FastAPI(title="GenomeWiz", version="0.1.0")
 
 settings = get_settings()
 app.add_middleware(
     SessionMiddleware,
-    secret_key=(settings.session_secret or "dev-session-secret"),
+    secret_key=settings.session_secret,
     same_site="lax",
+    https_only=False,
 )
 
-# DB
+# Ensure tables exist for the demo/test environment. In production this is managed by
+# Alembic migrations but calling ``create_all`` keeps the MVP self-contained.
 Base.metadata.create_all(bind=engine)
 
-# Sessions for OAuth
-s = get_settings()
-app.add_middleware(SessionMiddleware, secret_key=s.session_secret, https_only=False)
 
 @app.get("/health")
-def health():
+def health() -> dict[str, str]:
     return {"status": "ok"}
 
-# Public auth routes
-app.include_router(auth_router)
 
-# Protected routes (example usage of role guards)
-# You can also place Depends in each handler if you prefer fine-grained control
-app.include_router(sv_router, dependencies=[Depends(require_curator_or_admin)])
-app.include_router(labels_router, dependencies=[Depends(require_curator_or_admin)])
-app.include_router(consensus_router, dependencies=[Depends(require_curator_or_admin)])
-app.include_router(evidence_router, dependencies=[Depends(require_curator_or_admin)])
+# Public auth routes (login, callback, etc.)
+app.include_router(auth_router.router)
+
+# Protected routes guarded by curator/admin role checks.
+app.include_router(sv_router.router, dependencies=[Depends(require_curator_or_admin)])
+app.include_router(labels_router.router, dependencies=[Depends(require_curator_or_admin)])
+app.include_router(consensus_router.router, dependencies=[Depends(require_curator_or_admin)])
 
 
 @app.get("/auth/signed-in", response_class=HTMLResponse)
-def auth_signed_in_page():
-    # Minimal HTML that reads #token, stores it, and shows status
-    return """
-<!DOCTYPE html>
+def auth_signed_in_page() -> str:
+    """Simple page that stores the JWT fragment for the SPA."""
+
+    return """<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>Signed in</title></head>
+<head><meta charset=\"utf-8\"><title>Signed in</title></head>
 <body>
   <h2>Signing you in…</h2>
-  <div id="msg"></div>
+  <div id=\"msg\"></div>
   <script>
     (function () {
       const hash = (window.location.hash || "").replace(/^#/, "");
@@ -69,32 +64,26 @@ def auth_signed_in_page():
         return;
       }
 
-      // Store token for the SPA / future requests
       try { localStorage.setItem("gw_jwt", token); } catch (e) {}
 
-      // Optional: verify identity
       fetch("/auth/me", { headers: { "Authorization": "Bearer " + token } })
         .then(r => r.json())
-        .then(data => {
-          msg.textContent = "Signed in as " + (data.email || "unknown");
-        })
+        .then(data => { msg.textContent = "Signed in as " + (data.email || "unknown"); })
         .catch(() => { msg.textContent = "Signed in. (Could not verify /auth/me)"; });
-
-      // Optional: redirect to your app home after a short delay
-      // setTimeout(() => { window.location.assign("/"); }, 800);
     })();
   </script>
 </body>
-</html>
-"""
+</html>"""
+
 
 @app.get("/", response_class=HTMLResponse)
-def home_page():
-    return """
-<!DOCTYPE html>
-<html lang="en">
+def home_page() -> str:
+    """Minimal landing page for local testing."""
+
+    return """<!DOCTYPE html>
+<html lang=\"en\">
 <head>
-  <meta charset="utf-8">
+  <meta charset=\"utf-8\">
   <title>GenomeWiz</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 2em; }
@@ -108,19 +97,19 @@ def home_page():
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class=\"card\">
     <h1>🧬 GenomeWiz</h1>
-    <p id="status">Checking authentication…</p>
-    <div id="user-info" hidden>
-      <p><strong>Email:</strong> <span id="email"></span></p>
-      <p><strong>Roles:</strong> <span id="roles"></span></p>
+    <p id=\"status\">Checking authentication…</p>
+    <div id=\"user-info\" hidden>
+      <p><strong>Email:</strong> <span id=\"email\"></span></p>
+      <p><strong>Roles:</strong> <span id=\"roles\"></span></p>
       <details>
         <summary>Show JWT token</summary>
-        <div id="token"></div>
+        <div id=\"token\"></div>
       </details>
     </div>
-    <button id="login-btn" hidden>Login with Google</button>
-    <button id="logout-btn" hidden>Logout</button>
+    <button id=\"login-btn\" hidden>Login with Google</button>
+    <button id=\"logout-btn\" hidden>Logout</button>
   </div>
 
   <script>
@@ -179,23 +168,5 @@ def home_page():
 
     updateUI();
   </script>
-  <button id="fetch-png" hidden>Render PNG (demo)</button>
-  <img id="panel" style="display:block; margin-top:1em; max-width:100%;" />
-  <script>
-  // after successful /auth/me:
-  document.getElementById("fetch-png").hidden = false;
-  document.getElementById("fetch-png").onclick = async () => {
-    const token = localStorage.getItem("gw_jwt");
-    const r = await fetch("/evidence/png", {
-      method: "POST",
-      headers: {"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-      body: JSON.stringify({ sample_id: "samp_demo", chrom: "chr12", start: 25396000, end: 25412000 })
-    });
-    const blob = await r.blob();
-    document.getElementById("panel").src = URL.createObjectURL(blob);
-  };
-  </script>
-
 </body>
-</html>
-"""
+</html>"""

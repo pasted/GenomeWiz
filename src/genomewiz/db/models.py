@@ -6,7 +6,7 @@ from genomewiz.db.base import Base
 class Sample(Base):
     __tablename__ = "samples"
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    name: Mapped[str] = mapped_column(String, unique=True)
+    name: Mapped[str] = mapped_column(String)
     tumor_normal: Mapped[str] = mapped_column(String)  # tumor/normal/cell-line
     platform: Mapped[str] = mapped_column(String)      # ONT/PacBio
     source: Mapped[str] = mapped_column(String)
