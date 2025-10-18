@@ -4,7 +4,7 @@ from typing import List
 from genomewiz.db.base import get_db
 from genomewiz.db import models
 from genomewiz.schemas.sv import SV
-from genomewiz.core.security import get_current_user
+from genomewiz.core.auth import get_current_user
 
 router = APIRouter(prefix="/sv", tags=["sv"])
 
